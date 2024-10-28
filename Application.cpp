@@ -126,7 +126,7 @@ void write2DView(const View_2D& view) {
 }
 
 void write3DView(const View_3D& view) {
-    std::cout << "View ID: " << view.id << std::endl;
+    // std::cout << "View ID: " << view.id << std::endl;
 
     std::cout << "Points:" << std::endl;
     for (const auto& p : view.points) {
@@ -148,12 +148,11 @@ View_3D conv2D_to_3D(View_2D& front, View_2D& top, View_2D& side) {
     View_3D view;
     int point_id = 0;
 
-    // Vector to store 3D points temporarily
+    // Temporary storage for matched 3D points
     std::vector<Point_3D> threeD_points;
     std::unordered_set<std::pair<int, int>, boost::hash<std::pair<int, int>>> line_set;  // To avoid duplicates
 
     // Step 1: Create 3D points by matching corresponding points across all views
-    // WORKING
     for (size_t i = 0; i < top.points.size(); ++i) {
         for (size_t j = 0; j < front.points.size(); ++j) {
             for (size_t k = 0; k < side.points.size(); ++k) {
@@ -161,6 +160,7 @@ View_3D conv2D_to_3D(View_2D& front, View_2D& top, View_2D& side) {
                 Point& front_point = front.points[j];
                 Point& side_point = side.points[k];
 
+                // Match points based on shared coordinates
                 if (top_point.x == front_point.x &&
                     front_point.y == side_point.y &&
                     top_point.z == side_point.z) {
@@ -185,19 +185,17 @@ View_3D conv2D_to_3D(View_2D& front, View_2D& top, View_2D& side) {
         }
     }
 
-    // Step 2: Create 3D lines from 2D lines present in one or more views
-    // NOT WORKING: Extra lines being created
+    // Step 2: Create 3D lines from 2D lines, with printed output of contributing 2D point IDs
     for (size_t p_idx = 0; p_idx < threeD_points.size(); ++p_idx) {
         Point_3D& p3D = threeD_points[p_idx];
 
         // Check lines in the front view
-        for (size_t f_idx = 0; f_idx < p3D.front_point->lines.size(); ++f_idx) {
-            Line* line = p3D.front_point->lines[f_idx];
+        for (Line* line : p3D.front_point->lines) {
             Point* other_front = (line->start_point == p3D.front_point) ? line->end_point : line->start_point;
 
+            // Find corresponding 3D point
             Point_3D* other_3D = nullptr;
-            for (size_t i = 0; i < threeD_points.size(); ++i) {
-                Point_3D& point = threeD_points[i];
+            for (Point_3D& point : threeD_points) {
                 if (other_front->id == point.front_point->id) {
                     other_3D = &point;
                     break;
@@ -208,21 +206,22 @@ View_3D conv2D_to_3D(View_2D& front, View_2D& top, View_2D& side) {
                 int id1 = std::min(p3D.id, other_3D->id);
                 int id2 = std::max(p3D.id, other_3D->id);
 
-                // Insert the ordered pair into the set
                 if (line_set.find({id1, id2}) == line_set.end()) {
                     line_set.insert({id1, id2});
+
+                    // USED TO TRY DEBUGGING
+                    // std::cout << "3D Line created from FRONT view with Point IDs: "
+                    //           << p3D.front_point->id << " - " << other_3D->front_point->id << std::endl;
                 }
             }
         }
 
         // Check lines in the top view
-        for (size_t t_idx = 0; t_idx < p3D.top_point->lines.size(); ++t_idx) {
-            Line* top_line = p3D.top_point->lines[t_idx];
+        for (Line* top_line : p3D.top_point->lines) {
             Point* other_top = (top_line->start_point == p3D.top_point) ? top_line->end_point : top_line->start_point;
 
             Point_3D* other_3D = nullptr;
-            for (size_t i = 0; i < threeD_points.size(); ++i) {
-                Point_3D& point = threeD_points[i];
+            for (Point_3D& point : threeD_points) {
                 if (other_top->id == point.top_point->id) {
                     other_3D = &point;
                     break;
@@ -235,18 +234,20 @@ View_3D conv2D_to_3D(View_2D& front, View_2D& top, View_2D& side) {
 
                 if (line_set.find({id1, id2}) == line_set.end()) {
                     line_set.insert({id1, id2});
+
+                    // USED TO TRY DEBUGGING
+                    // std::cout << "3D Line created from TOP view with Point IDs: "
+                    //           << p3D.top_point->id << " - " << other_3D->top_point->id << std::endl;
                 }
             }
         }
 
         // Check lines in the side view
-        for (size_t s_idx = 0; s_idx < p3D.side_point->lines.size(); ++s_idx) {
-            Line* side_line = p3D.side_point->lines[s_idx];
+        for (Line* side_line : p3D.side_point->lines) {
             Point* other_side = (side_line->start_point == p3D.side_point) ? side_line->end_point : side_line->start_point;
 
             Point_3D* other_3D = nullptr;
-            for (size_t i = 0; i < threeD_points.size(); ++i) {
-                Point_3D& point = threeD_points[i];
+            for (Point_3D& point : threeD_points) {
                 if (other_side->id == point.side_point->id) {
                     other_3D = &point;
                     break;
@@ -259,14 +260,16 @@ View_3D conv2D_to_3D(View_2D& front, View_2D& top, View_2D& side) {
 
                 if (line_set.find({id1, id2}) == line_set.end()) {
                     line_set.insert({id1, id2});
+
+                    // USED TO TRY DEBUGGING
+                    // std::cout << "3D Line created from SIDE view with Point IDs: "
+                    //           << p3D.side_point->id << " - " << other_3D->side_point->id << std::endl;
                 }
             }
         }
     }
 
-    // Step 3: Create the 3D view
-    // WORKING
-    // Add points to the 3D view
+    // Step 3: Construct the 3D view
     for (const auto& p : threeD_points) {
         Point point_2D;
         point_2D.id = p.id;
@@ -276,7 +279,6 @@ View_3D conv2D_to_3D(View_2D& front, View_2D& top, View_2D& side) {
         view.points.push_back(point_2D);
     }
 
-    // Add lines to the 3D view using the ordered pairs
     for (const auto& line_pair : line_set) {
         int start_id = line_pair.first;
         int end_id = line_pair.second;
@@ -292,6 +294,7 @@ View_3D conv2D_to_3D(View_2D& front, View_2D& top, View_2D& side) {
 
     return view;
 }
+ 
 
 int main() {
     View_2D front;
